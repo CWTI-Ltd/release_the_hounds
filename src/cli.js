@@ -9,7 +9,7 @@ import { Command } from 'commander';
 import { join } from 'path';
 import { startOAuthFlow, checkAuthStatus as checkOAuthStatus } from './auth/oauth.js';
 import { authenticateWithGcloud, checkAuthStatus as checkGcloudStatus, isGcloudInstalled } from './auth/gcloud-auth.js';
-import { createProject, generateProjectId, listProjects, loadProjectState } from './gcp/project.js';
+import { createProject, generateProjectId, listProjects, loadProjectState, switchProject } from './gcp/project.js';
 import { enableAllRequiredApis, enableApi, isApiEnabled, REQUIRED_APIS } from './gcp/apis.js';
 import { setupServiceAccount, loadServiceAccountKey } from './gcp/service-account.js';
 import { grantAllRequiredRoles, REQUIRED_ROLES } from './gcp/iam.js';
@@ -25,6 +25,7 @@ import { setListingMetadata } from './play-store/metadata.js';
 import { uploadScreenshotsFromDirectory, uploadAppIcon, uploadFeatureGraphic } from './play-store/graphics.js';
 import { loadPlayStoreConfig, getDefaultConfigPath, createExampleConfig } from './play-store/config-loader.js';
 import { generatePlayStoreConfigTemplate } from './play-store/config-generator.js';
+import { listReviews, getUnrepliedReviews, replyToReview } from './play-store/reviews.js';
 
 const program = new Command();
 
@@ -220,6 +221,15 @@ program
   .command('list-projects')
   .description('List all accessible Google Cloud projects')
   .action(async () => {
+    // ... implementation ...
+  });
+
+// Switch project command
+program
+  .command('switch-project')
+  .description('Switch to a different Google Cloud project')
+  .argument('<id>', 'Project ID to switch to')
+  .action(async (projectId) => {
     try {
       const authStatus = await checkGcloudStatus();
       if (!authStatus.authenticated) {
@@ -227,21 +237,18 @@ program
         process.exit(1);
       }
 
-      console.log('\n📁 Accessible Projects:\n');
-      const projects = await listProjects();
-
-      if (projects.length === 0) {
-        console.log('   No projects found.');
-      } else {
-        projects.forEach(project => {
-          console.log(`   ${project.projectId} - ${project.name} (${project.projectNumber})`);
-        });
-      }
+      console.log(`\n📁 Switching to project: ${projectId}...`);
+      const project = await switchProject(projectId);
+      
+      console.log('\n✅ Successfully switched project!');
+      console.log(`   Project ID: ${project.projectId}`);
+      console.log(`   Name: ${project.name}`);
+      console.log(`   Project Number: ${project.projectNumber}`);
+      console.log('\n💡 Note: You may need to enable APIs and setup service account for this project:');
+      console.log(`   ./release-the-hounds.sh enable-apis`);
+      console.log(`   ./release-the-hounds.sh setup-service-account\n`);
     } catch (error) {
-      console.error('❌ Error listing projects:', error.message);
-      if (error.code) {
-        console.error(`   Error code: ${error.code}`);
-      }
+      console.error('\n❌ Failed to switch project:', error.message);
       process.exit(1);
     }
   });
@@ -912,6 +919,16 @@ program
   .description('Get instructions and service account email for granting Play Console permissions')
   .option('--open', 'Open Play Console permissions page in browser')
   .action(async (options) => {
+    // ... existing implementation ...
+  });
+
+// List reviews command
+program
+  .command('list-reviews')
+  .description('List unreplied reviews for an app')
+  .option('--package <name>', 'Android package name (uses current project if not provided)')
+  .option('--all', 'Show all reviews (replied and unreplied)')
+  .action(async (options) => {
     try {
       const authStatus = await checkGcloudStatus();
       if (!authStatus.authenticated) {
@@ -919,68 +936,80 @@ program
         process.exit(1);
       }
 
-      // Get service account email
-      const projectState = await loadProjectState();
-      if (!projectState || !projectState.projectId) {
-        console.error('❌ No project found. Create a project first:');
-        console.error('   ./release-the-hounds.sh create-project');
-        process.exit(1);
+      // Get package name
+      let packageName = options.package;
+      if (!packageName) {
+        const state = await loadProjectState();
+        if (state?.firebaseProject?.apps?.android?.[0]?.packageName) {
+          packageName = state.firebaseProject.apps.android[0].packageName;
+        } else {
+          console.error('❌ No package name found. Provide it with --package <name>');
+          process.exit(1);
+        }
       }
 
-      const serviceAccountData = await loadServiceAccountKey(projectState.projectId);
-      if (!serviceAccountData || !serviceAccountData.keyJson) {
-        console.error('❌ Service account not found. Create one first:');
-        console.error('   ./release-the-hounds.sh setup-service-account');
-        process.exit(1);
+      console.log(`\n💬 Fetching ${options.all ? 'all' : 'unreplied'} reviews for ${packageName}...`);
+      
+      const reviews = options.all 
+        ? (await listReviews(packageName, { maxResults: 50 })).reviews || []
+        : await getUnrepliedReviews(packageName);
+
+      if (reviews.length === 0) {
+        console.log('\n✅ No reviews found.');
+        return;
       }
 
-      const serviceAccountEmail = serviceAccountData.keyJson.client_email;
-
-      console.log('\n🔐 Play Console Permission Setup');
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-      console.log('📧 Service Account Email:');
-      console.log(`   ${serviceAccountEmail}\n`);
-      console.log('📋 Required Permissions:');
-      console.log('   ✅ View app information');
-      console.log('   ✅ Manage production releases');
-      console.log('   ✅ Release apps to testing tracks');
-      console.log('   ✅ Manage store presence (for metadata updates)');
-      console.log('   ✅ View financial data (for pricing/distribution)');
-      console.log('   ✅ Manage orders and subscriptions (for validation)\n');
-      console.log('   💡 RECOMMENDED: Grant "Admin" role for full access');
-      console.log('      This includes validation permissions and all other features\n');
-      console.log('📝 Steps:');
-      console.log('   1. Go to: https://play.google.com/console');
-      console.log('   2. Click "Settings" → "Users & Permissions"');
-      console.log('   3. Click "Invite new users"');
-      console.log('   4. Paste the service account email above');
-      console.log('   5. Select "Admin" role (recommended for full automation)');
-      console.log('      OR select individual permissions:');
-      console.log('         - View app information');
-      console.log('         - Manage production releases');
-      console.log('         - Release apps to testing tracks');
-      console.log('         - Manage store presence');
-      console.log('         - View financial data');
-      console.log('         - Manage orders and subscriptions');
-      console.log('   6. Click "Invite"\n');
-      console.log('⚠️  Note: If validation fails, grant "Admin" role for full access');
-
-      if (options.open) {
-        const { default: open } = await import('open');
-        const playConsoleUrl = 'https://play.google.com/console/u/0/developers/access';
-        console.log(`🌐 Opening Play Console permissions page...`);
-        await open(playConsoleUrl);
-        console.log(`   ✅ Opened: ${playConsoleUrl}\n`);
-      } else {
-        console.log('💡 Tip: Use --open to automatically open the permissions page\n');
-      }
-
-      console.log('✅ After granting permissions, you can:');
-      console.log('   - Upload builds via CI/CD');
-      console.log('   - Update metadata with: rth publish-play-store');
-      console.log('   - Verify access with: rth publish-play-store --dry-run\n');
+      console.log(`\nFound ${reviews.length} reviews:\n`);
+      reviews.forEach(review => {
+        const userComment = review.comments[0].userComment;
+        console.log('─'.repeat(60));
+        console.log(`ID: ${review.reviewId}`);
+        console.log(`Author: ${review.authorName || 'Anonymous'}`);
+        console.log(`Rating: ${'★'.repeat(userComment.starRating)}${'☆'.repeat(5 - userComment.starRating)}`);
+        console.log(`Comment: ${userComment.text}`);
+        console.log('─'.repeat(60));
+      });
     } catch (error) {
-      console.error('\n❌ Failed to get service account info:', error.message);
+      console.error('\n❌ Failed to list reviews:', error.message);
+      process.exit(1);
+    }
+  });
+
+// Reply to review command
+program
+  .command('reply-review')
+  .description('Post a reply to a review')
+  .requiredOption('--review-id <id>', 'Review ID to reply to')
+  .requiredOption('--text <text>', 'Reply content')
+  .option('--package <name>', 'Android package name (uses current project if not provided)')
+  .action(async (options) => {
+    try {
+      const authStatus = await checkGcloudStatus();
+      if (!authStatus.authenticated) {
+        console.error('❌ Not authenticated. Run "./release-the-hounds.sh auth" first.');
+        process.exit(1);
+      }
+
+      // Get package name
+      let packageName = options.package;
+      if (!packageName) {
+        const state = await loadProjectState();
+        if (state?.firebaseProject?.apps?.android?.[0]?.packageName) {
+          packageName = state.firebaseProject.apps.android[0].packageName;
+        } else {
+          console.error('❌ No package name found. Provide it with --package <name>');
+          process.exit(1);
+        }
+      }
+
+      console.log(`\n💬 Replying to review ${options.reviewId}...`);
+      const result = await replyToReview(packageName, options.reviewId, options.text);
+      
+      console.log('\n✅ Reply posted successfully!');
+      console.log(`   Review ID: ${options.reviewId}`);
+      console.log(`   Reply text: ${result.result.replyText}`);
+    } catch (error) {
+      console.error('\n❌ Failed to post reply:', error.message);
       process.exit(1);
     }
   });

@@ -2,6 +2,13 @@
  * Configuration constants for Release The Hounds
  */
 
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const ROOT_DIR = join(__dirname, '..');
+
 export const OAUTH_CONFIG = {
   // OAuth2 scopes required for all operations
   SCOPES: [
@@ -25,19 +32,19 @@ export const OAUTH_CONFIG = {
 
 export const PATHS = {
   // Directory for storing secrets and state
-  AUTOPUBLISH_DIR: '.autopublish',
+  AUTOPUBLISH_DIR: join(ROOT_DIR, '.autopublish'),
   
   // Token storage
-  REFRESH_TOKEN_FILE: '.autopublish/refresh-token.json',
+  REFRESH_TOKEN_FILE: join(ROOT_DIR, '.autopublish/refresh-token.json'),
   
   // State file
-  STATE_FILE: '.autopublish/state.json',
+  STATE_FILE: join(ROOT_DIR, '.autopublish/state.json'),
   
   // Service account keys directory
-  SERVICE_ACCOUNT_DIR: '.autopublish/service-accounts',
+  SERVICE_ACCOUNT_DIR: join(ROOT_DIR, '.autopublish/service-accounts'),
   
   // Firebase config directory
-  FIREBASE_CONFIG_DIR: '.autopublish/firebase-config',
+  FIREBASE_CONFIG_DIR: join(ROOT_DIR, '.autopublish/firebase-config'),
 };
 
 export const OAUTH_TIMEOUT = {

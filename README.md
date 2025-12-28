@@ -317,6 +317,41 @@ This tool uses **gcloud CLI** for authentication, which means:
 
 The script will check for gcloud automatically and provide installation instructions if missing.
 
+## MCP Server (Cursor / Claude)
+
+Release The Hounds can be used as a **Model Context Protocol (MCP)** server, allowing AI assistants like Cursor or Claude to interact directly with your Android devices and Google Play publishing pipeline.
+
+### Setup
+
+Add the following to your MCP configuration file (e.g., `~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "release-the-hounds": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/path/to/release-the-hounds/src/mcp/server.js"],
+      "cwd": "/path/to/release-the-hounds"
+    }
+  }
+}
+```
+
+### Tools Provided
+
+- **ADB Tools**: `adb_tap`, `adb_screenshot`, `adb_uiDump`, `adb_selectDevice`
+- **GCP Tools**: `gcp_listProjects`, `gcp_getCurrentProject`, `gcp_switchProject`
+- **Play Store Tools**:
+    - `playStore_setAppConfig`: Store `bucketId` and other app-specific settings.
+    - `playStore_listUnrepliedReviews`: List recent unreplied reviews (last 7 days).
+    - `playStore_listHistoryReports`: List historical monthly CSV reports from Cloud Storage.
+    - `playStore_searchAllHistory`: Autonomous search across ALL historical reports for unreplied reviews in a date range.
+    - `playStore_getUnrepliedFromReport`: Download and parse a specific report for unreplied feedback.
+    - `playStore_checkStorageAccess`: Verify the service account has the hidden "Bulk Reports" account-level permission.
+    - `playStore_batchReply`: Post multiple replies in a single operation.
+    - `playStore_replyToReview`: Post or update a reply to any review by ID.
+
 ## Project Structure
 
 ```

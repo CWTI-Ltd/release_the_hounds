@@ -31,12 +31,13 @@ export async function getPlayStoreClient(projectId = null) {
 
   const serviceAccountKey = serviceAccountData.keyJson;
 
-  // Create JWT auth client for Android Publisher API
+  // Create JWT auth client for Android Publisher API and Storage (for reports)
   const auth = new google.auth.JWT({
     email: serviceAccountKey.client_email,
     key: serviceAccountKey.private_key,
     scopes: [
-      'https://www.googleapis.com/auth/androidpublisher'
+      'https://www.googleapis.com/auth/androidpublisher',
+      'https://www.googleapis.com/auth/devstorage.read_only'
     ]
   });
 
@@ -56,32 +57,36 @@ export async function getPlayStoreClient(projectId = null) {
  * @param {string} projectId - GCP project ID
  * @returns {Promise<boolean>} True if access verified
  */
-/**
- * Verify service account has Play Console access
- * Note: This checks if we can make API calls, but Play Console permissions
- * must be granted manually in Play Console UI
- * @param {string} projectId - GCP project ID
- * @returns {Promise<boolean>} True if access verified
- */
 export async function verifyPlayConsoleAccess(projectId = null) {
   try {
     const androidpublisher = await getPlayStoreClient(projectId);
     
-    // Load service account email for error message
-    const projectState = await loadProjectState();
-    if (!projectId && projectState) {
-      projectId = projectState.projectId;
+    // Load project state if projectId not provided
+    if (!projectId) {
+      const projectState = await loadProjectState();
+      projectId = projectState?.projectId;
     }
     
     const serviceAccountData = await loadServiceAccountKey(projectId);
     const serviceAccountEmail = serviceAccountData?.keyJson?.client_email;
     
-    // Try to list apps (this will fail if service account doesn't have Play Console access)
-    // We'll catch the error and provide helpful message
+    // Try to list reviews (this will fail if service account doesn't have Play Console access)
+    // We use list instead of something more intensive
+    await androidpublisher.reviews.list({
+      packageName: 'com.any.package', // Doesn't matter, we just check for 403 vs 404
+      maxResults: 1
+    }).catch(err => {
+      // 404 means we have access but app doesn't exist
+      // 403 means no access
+      if (err.code === 403) throw err;
+    });
+
     return true;
   } catch (error) {
-    const projectState = await loadProjectState();
-    const projectId = projectId || projectState?.projectId;
+    if (!projectId) {
+      const projectState = await loadProjectState();
+      projectId = projectState?.projectId;
+    }
     const serviceAccountData = await loadServiceAccountKey(projectId);
     const serviceAccountEmail = serviceAccountData?.keyJson?.client_email || 'check .autopublish/state.json';
     

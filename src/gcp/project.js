@@ -212,6 +212,34 @@ export async function loadProjectState() {
 }
 
 /**
+ * Save application-specific configuration (like bucketId)
+ * @param {string} packageName - Android package name
+ * @param {Object} config - Configuration object
+ */
+export async function saveAppConfig(packageName, config) {
+  const state = await readJsonFile(PATHS.STATE_FILE) || {};
+  if (!state.appConfigs) {
+    state.appConfigs = {};
+  }
+  state.appConfigs[packageName] = {
+    ...state.appConfigs[packageName],
+    ...config,
+    updatedAt: new Date().toISOString()
+  };
+  await writeJsonFile(PATHS.STATE_FILE, state);
+}
+
+/**
+ * Load application-specific configuration
+ * @param {string} packageName - Android package name
+ * @returns {Promise<Object|null>} App config
+ */
+export async function loadAppConfig(packageName) {
+  const state = await readJsonFile(PATHS.STATE_FILE);
+  return state?.appConfigs?.[packageName] || null;
+}
+
+/**
  * Sleep utility
  */
 function sleep(ms) {
