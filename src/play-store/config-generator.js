@@ -73,35 +73,12 @@ export async function generatePlayStoreConfigTemplate(outputPath = null, force =
     metadata: {
       title: appDisplayName || "My Awesome App",
       shortDescription: "Short description (max 80 characters)",
-      fullDescription: "Full description with details about your app. This can be up to 4000 characters and should describe what your app does, its features, and any important information users should know.",
-      category: "APPLICATION_PRODUCTIVITY",
-      privacyPolicyUrl: "https://example.com/privacy"
+      fullDescription: "Full description with details about your app. This can be up to 4000 characters and should describe what your app does, its features, and any important information users should know."
     },
     graphics: {
       screenshotsDir: "./screenshots/android",
       icon: null,
       featureGraphic: null
-    },
-    contentRating: {
-      isFinancialApp: false,
-      isHealthApp: false,
-      isGamblingApp: false,
-      targetAgeGroup: "EVERYONE",
-      containsViolence: false,
-      containsSexualContent: false,
-      containsDrugs: false,
-      dataSafety: {
-        collectsPersonalData: false,
-        sharesPersonalData: false,
-        collectsLocation: false
-      }
-    },
-    distribution: {
-      track: "internal",
-      pricing: {
-        free: true
-      },
-      countries: "all"
     }
   };
 
@@ -123,11 +100,16 @@ export async function generatePlayStoreConfigTemplate(outputPath = null, force =
   
   console.log(`\n💡 Next steps:`);
   console.log(`   1. Edit ${configPath}`);
-  console.log(`   2. Fill in metadata (descriptions, category, privacy policy)`);
+  console.log(`   2. Fill in metadata (title, descriptions)`);
   console.log(`   3. Update build path if different`);
   console.log(`   4. Add screenshots to screenshots/android/`);
-  console.log(`   5. Answer content rating questions`);
-  console.log(`   6. Run: ./release-the-hounds.sh publish-play-store\n`);
+  console.log(`   5. Add icon and feature graphic paths (optional)`);
+  console.log(`   6. Run: rth publish-play-store`);
+  console.log(`\n⚠️  Note: Some fields must be set manually in Play Console:`);
+  console.log(`   - Privacy policy URL`);
+  console.log(`   - App category`);
+  console.log(`   - Content rating questionnaires`);
+  console.log(`   - Data safety form\n`);
 
   return configPath;
 }

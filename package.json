@@ -1,11 +1,12 @@
 {
-  "name": "auto-publisher",
+  "name": "release-the-hounds",
   "version": "0.1.0",
-  "description": "Automated mobile app publishing pipeline for Google Play Store and iOS App Store",
+  "description": "Release The Hounds - Automated mobile app publishing pipeline for Google Play Store and iOS App Store",
   "main": "src/index.js",
   "type": "module",
   "bin": {
-    "auto-publisher": "./src/cli.js"
+    "release-the-hounds": "./release-the-hounds.sh",
+    "rth": "./release-the-hounds.sh"
   },
   "scripts": {
     "start": "node src/cli.js",

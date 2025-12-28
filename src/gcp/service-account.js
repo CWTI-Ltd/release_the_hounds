@@ -52,7 +52,7 @@ export async function createServiceAccount(projectId, accountId, displayName) {
         accountId: accountId,
         serviceAccount: {
           displayName: displayName,
-          description: 'Service account for auto-publisher automation'
+          description: 'Service account for Release The Hounds automation'
         }
       }
     });
@@ -163,7 +163,7 @@ export async function loadServiceAccountKey(projectId) {
 /**
  * Create service account and generate key in one operation
  */
-export async function setupServiceAccount(projectId, accountId = 'app-publisher', displayName = 'Auto-Publisher Service Account') {
+export async function setupServiceAccount(projectId, accountId = 'app-publisher', displayName = 'Release The Hounds Service Account') {
   try {
     // Create service account
     const serviceAccount = await createServiceAccount(projectId, accountId, displayName);

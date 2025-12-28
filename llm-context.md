@@ -1,8 +1,8 @@
-# LLM Context: Release The Hounds (Auto-Publisher)
+# LLM Context: Release The Hounds
 
 ## Project Overview
 
-**Project Name**: `release-the-hounds` (also referred to as `auto-publisher` internally)
+**Project Name**: `release-the-hounds`
 
 **Purpose**: Fully automated mobile app publishing pipeline that takes a Gmail account and automatically creates Google Cloud projects, Firebase projects, and publishes apps to Google Play Store and iOS App Store - with **zero manual steps** in Google Cloud Console, Play Console, or App Store Connect.
 
@@ -186,9 +186,9 @@ release_the_hounds/
 - **Application Default Credentials**: This is what the Google APIs client libraries use. Set up via `gcloud auth application-default login`.
 
 ### 2. Project Naming
-- User-facing: `release-the-hounds.sh` (the script name)
-- Internal CLI name: `auto-publisher` (Commander.js program name)
-- **Important**: All error messages should reference `./release-the-hounds.sh` not "auto-publisher"
+- User-facing: `release-the-hounds` (the command name)
+- Package name: `release-the-hounds` (npm package name)
+- **Important**: All user-facing messages should reference `release-the-hounds` or `Release The Hounds`
 
 ### 3. State Management
 - State stored in `.autopublish/` directory (gitignored)

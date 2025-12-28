@@ -39,55 +39,29 @@ function validateConfig(config) {
     throw new Error(`Missing required config fields: ${missing.join(', ')}`);
   }
 
-  // Validate build section
-  if (!config.build.aab && !config.build.apk) {
-    throw new Error('Config must specify either build.aab or build.apk');
-  }
+  // Build section is optional (builds are uploaded via CI/CD)
+  // We don't validate it here since this tool only manages metadata
 
   // Validate metadata section
-  const requiredMetadata = ['title', 'shortDescription', 'fullDescription', 'category', 'privacyPolicyUrl'];
+  // Note: Only fields that CAN be automated via API are required
+  const requiredMetadata = ['title', 'shortDescription', 'fullDescription'];
   const missingMetadata = requiredMetadata.filter(field => !config.metadata[field]);
 
   if (missingMetadata.length > 0) {
     throw new Error(`Missing required metadata fields: ${missingMetadata.join(', ')}`);
   }
-
-  // Validate category format
-  const validCategories = [
-    'APPLICATION_PRODUCTIVITY',
-    'APPLICATION_GAME',
-    'APPLICATION_FINANCE',
-    'APPLICATION_MEDICAL',
-    'GAME_ACTION',
-    'GAME_ADVENTURE',
-    'GAME_ARCADE',
-    'GAME_BOARD',
-    'GAME_CARD',
-    'GAME_CASINO',
-    'GAME_CASUAL',
-    'GAME_EDUCATIONAL',
-    'GAME_MUSIC',
-    'GAME_PUZZLE',
-    'GAME_RACING',
-    'GAME_ROLE_PLAYING',
-    'GAME_SIMULATION',
-    'GAME_SPORTS',
-    'GAME_STRATEGY',
-    'GAME_TRIVIA',
-    'GAME_WORD'
-  ];
-
-  if (!validCategories.includes(config.metadata.category)) {
-    console.warn(`⚠️  Category "${config.metadata.category}" may not be valid. Valid categories: ${validCategories.slice(0, 5).join(', ')}...`);
-  }
 }
 
 /**
  * Get default config path
+ * Uses ORIGINAL_CWD environment variable if set (preserved from shell script)
+ * Otherwise falls back to process.cwd()
  * @returns {string} Default config path
  */
 export function getDefaultConfigPath() {
-  return join(process.cwd(), 'play-store-config.json');
+  // Use original CWD if preserved by shell script, otherwise use current CWD
+  const baseDir = process.env.ORIGINAL_CWD || process.cwd();
+  return join(baseDir, 'play-store-config.json');
 }
 
 /**

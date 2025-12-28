@@ -1,5 +1,5 @@
 /**
- * Configuration constants for the auto-publisher tool
+ * Configuration constants for Release The Hounds
  */
 
 export const OAUTH_CONFIG = {

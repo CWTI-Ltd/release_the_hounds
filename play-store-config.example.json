@@ -7,35 +7,12 @@
   "metadata": {
     "title": "My Awesome App",
     "shortDescription": "Short description (max 80 characters)",
-    "fullDescription": "Full description with details about your app. This can be up to 4000 characters and should describe what your app does, its features, and any important information users should know.",
-    "category": "APPLICATION_PRODUCTIVITY",
-    "privacyPolicyUrl": "https://example.com/privacy"
+    "fullDescription": "Full description with details about your app. This can be up to 4000 characters and should describe what your app does, its features, and any important information users should know."
   },
   "graphics": {
     "screenshotsDir": "./screenshots/android",
     "icon": "./assets/icon-512.png",
     "featureGraphic": "./assets/feature-graphic-1024x500.png"
-  },
-  "contentRating": {
-    "isFinancialApp": false,
-    "isHealthApp": false,
-    "isGamblingApp": false,
-    "targetAgeGroup": "EVERYONE",
-    "containsViolence": false,
-    "containsSexualContent": false,
-    "containsDrugs": false,
-    "dataSafety": {
-      "collectsPersonalData": false,
-      "sharesPersonalData": false,
-      "collectsLocation": false
-    }
-  },
-  "distribution": {
-    "track": "internal",
-    "pricing": {
-      "free": true
-    },
-    "countries": "all"
   }
 }
 

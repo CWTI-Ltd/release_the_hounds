@@ -27,6 +27,20 @@ export async function setListingMetadata(packageName, editId, language, metadata
   validateMetadata(metadata);
 
   try {
+    // First, get current listing to see what fields are available
+    let currentListing = null;
+    try {
+      const currentResponse = await androidpublisher.edits.listings.get({
+        packageName: packageName,
+        editId: editId,
+        language: language
+      });
+      currentListing = currentResponse.data;
+    } catch (error) {
+      // If listing doesn't exist yet, that's okay - we'll create it
+      console.log(`   ℹ️  Creating new listing for ${language}`);
+    }
+
     const listing = {
       title: metadata.title,
       shortDescription: metadata.shortDescription,
@@ -34,22 +48,48 @@ export async function setListingMetadata(packageName, editId, language, metadata
     };
 
     // Update listing
-    const response = await androidpublisher.edits.listings.update({
-      packageName: packageName,
-      editId: editId,
-      language: language,
-      requestBody: listing
-    });
+    let response;
+    try {
+      response = await androidpublisher.edits.listings.update({
+        packageName: packageName,
+        editId: editId,
+        language: language,
+        requestBody: listing
+      });
+    } catch (error) {
+      throw new Error(`Failed to update listing: ${error.message}`);
+    }
+
+    // Verify what was actually saved by getting the listing back
+    let savedTitle = null;
+    let savedShortDesc = null;
+    let savedFullDesc = null;
+    try {
+      const savedListing = await androidpublisher.edits.listings.get({
+        packageName: packageName,
+        editId: editId,
+        language: language
+      });
+      savedTitle = savedListing.data?.title;
+      savedShortDesc = savedListing.data?.shortDescription;
+      savedFullDesc = savedListing.data?.fullDescription;
+    } catch (error) {
+      // Ignore verification errors
+    }
 
     console.log(`   ✅ Listing metadata updated`);
-
-    // Set app details (category, privacy policy, etc.)
-    if (metadata.category || metadata.privacyPolicyUrl) {
-      await setAppDetails(packageName, editId, {
-        category: metadata.category,
-        privacyPolicyUrl: metadata.privacyPolicyUrl
-      });
+    if (savedTitle) {
+      console.log(`      ✅ Title: "${savedTitle}"`);
     }
+    if (savedShortDesc) {
+      console.log(`      ✅ Short description: "${savedShortDesc.substring(0, 60)}..."`);
+    }
+    if (savedFullDesc) {
+      console.log(`      ✅ Full description: ${savedFullDesc.length} characters`);
+    }
+
+    // Privacy policy URL and category cannot be set via API (Google limitation)
+    // These fields are no longer in the config, but if someone has old config, ignore them
 
     return response.data;
   } catch (error) {
@@ -58,10 +98,12 @@ export async function setListingMetadata(packageName, editId, language, metadata
 }
 
 /**
- * Set app details (category, privacy policy, etc.)
+ * Set app details (privacy policy URL, category, etc.)
  * @param {string} packageName - Android package name
  * @param {string} editId - Edit session ID
  * @param {Object} details - App details
+ * @param {string} details.privacyPolicyUrl - Privacy policy URL
+ * @param {string} details.category - App category
  * @returns {Promise<Object>} Updated app details
  */
 async function setAppDetails(packageName, editId, details) {
@@ -69,34 +111,59 @@ async function setAppDetails(packageName, editId, details) {
 
   try {
     // Get current app details
-    const currentDetails = await androidpublisher.edits.get({
-      packageName: packageName,
-      editId: editId
-    });
+    let currentDetails;
+    try {
+      currentDetails = await androidpublisher.edits.details.get({
+        packageName: packageName,
+        editId: editId
+      });
+    } catch (error) {
+      // If details endpoint doesn't exist or fails, try alternative approach
+      console.log(`   ⚠️  Could not get current app details: ${error.message}`);
+      currentDetails = { data: {} };
+    }
 
     const appDetails = {
       ...(currentDetails.data || {}),
       defaultLanguage: currentDetails.data?.defaultLanguage || 'en-US'
     };
 
-    // Update category if provided
-    if (details.category) {
-      // Category is set via the app's category field
-      // This may require using a different endpoint
-      console.log(`   Setting category: ${details.category}`);
+    // Set privacy policy URL if provided
+    if (details.privacyPolicyUrl) {
+      appDetails.privacyPolicyUrl = details.privacyPolicyUrl;
     }
 
-    // Privacy policy is set via listings
-    if (details.privacyPolicyUrl) {
-      console.log(`   Privacy policy URL: ${details.privacyPolicyUrl}`);
-      // Privacy policy is typically set in the listing, not app details
+    // Set category if provided
+    if (details.category) {
+      appDetails.category = details.category;
+    }
+
+    // Update app details
+    try {
+      await androidpublisher.edits.details.update({
+        packageName: packageName,
+        editId: editId,
+        requestBody: appDetails
+      });
+      
+      if (details.privacyPolicyUrl) {
+        console.log(`   ✅ Privacy policy URL set: ${details.privacyPolicyUrl}`);
+      }
+      if (details.category) {
+        console.log(`   ✅ App category set: ${details.category}`);
+      }
+    } catch (error) {
+      // Details endpoint might not support all fields or might need different format
+      console.log(`   ⚠️  Could not set all app details via API: ${error.message}`);
+      console.log(`   ℹ️  Privacy policy URL and category may need to be set manually in Play Console`);
+      console.log(`   💡 Privacy policy: ${details.privacyPolicyUrl || 'N/A'}`);
+      console.log(`   💡 Category: ${details.category || 'N/A'}`);
     }
 
     return appDetails;
   } catch (error) {
-    // App details endpoint might not support all fields
-    // Continue without failing
-    console.log(`   ⚠️  Could not set all app details: ${error.message}`);
+    console.log(`   ⚠️  Could not set app details: ${error.message}`);
+    console.log(`   ℹ️  Privacy policy URL and category may need to be set manually in Play Console`);
     return {};
   }
 }
@@ -115,10 +182,6 @@ function validateMetadata(metadata) {
 
   if (metadata.fullDescription && metadata.fullDescription.length > 4000) {
     throw new Error(`Full description exceeds 4000 characters (${metadata.fullDescription.length} chars)`);
-  }
-
-  if (metadata.privacyPolicyUrl && !isValidUrl(metadata.privacyPolicyUrl)) {
-    throw new Error(`Invalid privacy policy URL: ${metadata.privacyPolicyUrl}`);
   }
 }
 

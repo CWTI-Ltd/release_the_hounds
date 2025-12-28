@@ -24,10 +24,12 @@ export async function getPlayStoreClient(projectId = null) {
   }
 
   // Load service account key
-  const serviceAccountKey = await loadServiceAccountKey(projectId);
-  if (!serviceAccountKey) {
+  const serviceAccountData = await loadServiceAccountKey(projectId);
+  if (!serviceAccountData || !serviceAccountData.keyJson) {
     throw new Error(`Service account key not found for project ${projectId}. Run: ./release-the-hounds.sh setup-service-account`);
   }
+
+  const serviceAccountKey = serviceAccountData.keyJson;
 
   // Create JWT auth client for Android Publisher API
   const auth = new google.auth.JWT({
@@ -71,8 +73,8 @@ export async function verifyPlayConsoleAccess(projectId = null) {
       projectId = projectState.projectId;
     }
     
-    const serviceAccountKey = await loadServiceAccountKey(projectId);
-    const serviceAccountEmail = serviceAccountKey?.client_email;
+    const serviceAccountData = await loadServiceAccountKey(projectId);
+    const serviceAccountEmail = serviceAccountData?.keyJson?.client_email;
     
     // Try to list apps (this will fail if service account doesn't have Play Console access)
     // We'll catch the error and provide helpful message
@@ -80,8 +82,8 @@ export async function verifyPlayConsoleAccess(projectId = null) {
   } catch (error) {
     const projectState = await loadProjectState();
     const projectId = projectId || projectState?.projectId;
-    const serviceAccountKey = await loadServiceAccountKey(projectId);
-    const serviceAccountEmail = serviceAccountKey?.client_email || 'check .autopublish/state.json';
+    const serviceAccountData = await loadServiceAccountKey(projectId);
+    const serviceAccountEmail = serviceAccountData?.keyJson?.client_email || 'check .autopublish/state.json';
     
     if (error.code === 403 || error.message.includes('permission') || error.message.includes('access')) {
       throw new Error(

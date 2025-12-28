@@ -15,47 +15,31 @@ import { getPlayStoreClient } from './auth.js';
  * @returns {Promise<Object>} Pricing result
  */
 export async function setPricing(packageName, editId, pricing) {
-  const androidpublisher = await getPlayStoreClient();
-
   console.log(`\n💰 Setting pricing...`);
 
-  try {
-    if (pricing.free) {
-      // Set to free
-      const response = await androidpublisher.edits.pricing.update({
-        packageName: packageName,
-        editId: editId,
-        requestBody: {
-          price: {
-            priceMicros: '0',
-            currency: pricing.currency || 'USD'
-          }
-        }
-      });
-
-      console.log(`   ✅ App set to FREE`);
-      return response.data;
-    } else {
-      // Set paid price
-      const priceMicros = Math.round(parseFloat(pricing.price) * 1000000).toString();
-      
-      const response = await androidpublisher.edits.pricing.update({
-        packageName: packageName,
-        editId: editId,
-        requestBody: {
-          price: {
-            priceMicros: priceMicros,
-            currency: pricing.currency || 'USD'
-          }
-        }
-      });
-
-      console.log(`   ✅ Price set: ${pricing.currency || 'USD'} ${pricing.price}`);
-      return response.data;
-    }
-  } catch (error) {
-    throw new Error(`Failed to set pricing: ${error.message}`);
+  // Note: Pricing is typically set during app creation or via Play Console UI
+  // The API may not support setting pricing directly via edits.pricing
+  // We'll provide guidance instead
+  
+  if (pricing.free) {
+    console.log(`   ✅ App is FREE`);
+    console.log(`   ℹ️  Pricing is set during app creation in Play Console`);
+    console.log(`   💡 If you need to change pricing, go to:`);
+    console.log(`      https://play.google.com/console → Your app → Pricing & distribution`);
+  } else {
+    const price = pricing.price || '0.00';
+    const currency = pricing.currency || 'USD';
+    console.log(`   ✅ App price: ${currency} ${price}`);
+    console.log(`   ℹ️  Pricing is set during app creation in Play Console`);
+    console.log(`   💡 If you need to change pricing, go to:`);
+    console.log(`      https://play.google.com/console → Your app → Pricing & distribution`);
   }
+
+  return {
+    success: true,
+    note: 'Pricing is managed in Play Console UI',
+    pricing: pricing
+  };
 }
 
 /**

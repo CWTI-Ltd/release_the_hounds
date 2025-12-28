@@ -242,63 +242,106 @@ screenshots/
 
 #### 9. Grant Service Account Access (One-Time Manual Step)
 
-**Get service account email**:
+**⚠️ Important**: Play Console permissions cannot be granted automatically via API. This is a Google security limitation. However, Release The Hounds can guide you through the process.
+
+**Get service account email and open Play Console**:
 ```bash
-cat .autopublish/state.json | grep client_email
-# Output: "client_email": "autoapp-xxx@autoapp-xxx.iam.gserviceaccount.com"
+./release-the-hounds.sh grant-play-console-access --open
 ```
 
-**Grant access**:
-1. Go to [Play Console](https://play.google.com/console)
-2. Click **Settings** → **Users & Permissions**
-3. Click **Invite new users**
-4. Paste service account email
-5. Select **Admin** or **Release** permissions
-6. Click **Invite**
+This will:
+- Display your service account email (ready to copy)
+- Show required permissions
+- **Automatically open Play Console permissions page in your browser**
 
-**Why**: The service account needs Play Console access to publish apps.
+**Then manually grant access**:
+1. In the opened Play Console page, click **"Invite new users"**
+2. Paste the service account email from the terminal
+3. Select **Admin** or **Release** permissions
+4. Click **Invite**
+
+**Why manual?**: Google Play Console doesn't provide an API endpoint for granting user permissions. This is a security measure by Google. Release The Hounds helps by opening the right page and showing you exactly what to do.
 
 ---
 
-### Phase 5: Publish to Play Store
+### Phase 5: First Build Upload (Manual - One-Time)
 
-#### 10. Publish!
+**⚠️ Important**: The first build upload must be done manually through Play Console UI. This is a Google Play Store API limitation - draft apps aren't "active" for API access until the first build is uploaded via the UI.
+
+#### 10. Build Your App Locally
+
+```bash
+# Flutter
+flutter build appbundle
+
+# Or React Native / Native Android
+cd android && ./gradlew bundleRelease
+```
+
+Your AAB will be at: `build/app/outputs/bundle/release/app-release.aab` (Flutter) or `android/app/build/outputs/bundle/release/app-release.aab` (React Native)
+
+#### 11. Upload First Build Manually in Play Console
+
+1. Go to [Play Console](https://play.google.com/console)
+2. Select your app
+3. Go to **"Release"** → **"Internal testing"** → **"Create new release"**
+4. Upload your AAB file (`app-release.aab`)
+5. Click **"Save"** (you don't need to publish yet)
+
+**Why manual?**: The Play Store API doesn't allow creating edit sessions for draft apps. Uploading the first build through the UI "activates" the app for API access. After this one-time step, CI/CD can handle all future uploads automatically.
+
+---
+
+### Phase 6: Configure Metadata (After First Upload)
+
+#### 12. Generate Play Store Config
+
+```bash
+./release-the-hounds.sh generate-play-store-config
+```
+
+#### 13. Edit Config File
+
+Edit `play-store-config.json` with your app details (title, descriptions, screenshots, etc.)
+
+#### 14. Publish Metadata
 
 ```bash
 ./release-the-hounds.sh publish-play-store
 ```
 
-**What it does**:
+**What it does** (metadata only - builds are handled by CI/CD):
 1. ✅ Verifies Play Console access
-2. ✅ Checks if app exists (creates automatically if not)
-3. ✅ Uploads AAB/APK (creates app if first time)
-4. ✅ Sets metadata (title, descriptions, category)
-5. ✅ Sets content rating (answers questionnaires)
-6. ✅ Uploads screenshots
-7. ✅ Uploads icon & feature graphic (if provided)
-8. ✅ Sets pricing (free/paid)
-9. ✅ Sets release track (internal/alpha/beta/production)
-10. ✅ Validates edit
-11. ✅ Commits edit (publishes!)
+2. ✅ Checks if app exists
+3. ✅ Sets metadata (title, descriptions, category)
+4. ✅ Sets content rating (answers questionnaires)
+5. ✅ Uploads screenshots
+6. ✅ Uploads icon & feature graphic (if provided)
+7. ✅ Sets pricing (free/paid)
+8. ✅ Sets distribution countries
+9. ✅ Validates edit
+10. ✅ Commits edit (publishes metadata!)
+
+**Note**: This command only updates metadata/configuration. Build uploads are handled by your CI/CD pipeline (GitHub Actions, etc.).
 
 **Output**:
 ```
-🚀 Publishing to Play Store...
+📝 Updating Play Store metadata and configuration...
    Package: com.ivanmorgillo.pushuptracker
-   Track: internal
+
+💡 Note: Build uploads are handled by CI/CD. This command only updates metadata.
 
 📋 Step 1: Verifying Play Console access...
    ✅ Access verified
 
 📋 Step 2: Checking Play Store app...
-   ℹ️  App does not exist yet in Play Console
-   📝 Note: App will be created automatically when you upload your first AAB/APK
+   ✅ App already exists in Play Console
 
-📋 Step 3: Uploading build...
-   📦 Uploading ./android/app/build/outputs/bundle/release/app-release.aab...
-   ✅ AAB uploaded successfully
-   Version Code: 1
-   ℹ️  App created automatically!
+📋 Step 3: Creating edit session...
+   ✅ Edit session created: abc123
+
+📋 Step 4: Setting metadata...
+   ✅ Listing metadata updated
 
 📋 Step 4: Setting metadata...
    ✅ Listing metadata updated

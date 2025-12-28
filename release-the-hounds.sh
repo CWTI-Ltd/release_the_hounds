@@ -1,14 +1,27 @@
 #!/bin/bash
 
-# Auto-Publisher: Single entry point for the entire automation pipeline
+# Release The Hounds: Single entry point for the entire automation pipeline
 # Just run: ./release-the-hounds.sh
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve script directory, handling symlinks
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+# If script is a symlink, resolve it
+while [ -h "$SCRIPT_SOURCE" ]; do
+  SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+  SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+  # If relative symlink, resolve relative to script directory
+  [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" && pwd)"
+# Preserve original working directory before changing to script directory
+ORIGINAL_CWD="$(pwd)"
 cd "$SCRIPT_DIR"
+# Export original CWD so Node.js can use it
+export ORIGINAL_CWD
 
-echo "🚀 Auto-Publisher: Mobile App Publishing Automation"
+echo "🚀 Release The Hounds: Mobile App Publishing Automation"
 echo ""
 
 # Track if we need to exit
@@ -120,7 +133,10 @@ else
     echo "   ./release-the-hounds.sh setup-service-account - Create service account and grant roles"
     echo "   ./release-the-hounds.sh setup-firebase       - Create/link Firebase project and register apps"
     echo "   ./release-the-hounds.sh generate-play-store-config - Generate Play Store config template"
-    echo "   ./release-the-hounds.sh publish-play-store   - Publish app to Google Play Store"
+    echo "   ./release-the-hounds.sh export-service-account - Export service account key for CI/CD"
+    echo "   ./release-the-hounds.sh enable-apis           - Enable required Google Cloud APIs"
+    echo "   ./release-the-hounds.sh generate-play-store-config - Generate Play Store config template"
+    echo "   ./release-the-hounds.sh publish-play-store   - Publish app metadata to Google Play Store"
     echo ""
     echo "💡 Start with: ./release-the-hounds.sh check-deps"
 fi

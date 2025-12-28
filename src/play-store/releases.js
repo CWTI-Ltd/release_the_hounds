@@ -135,21 +135,40 @@ export async function uploadBuildWithEdit(packageName, filePath) {
       editId = await createEdit(packageName);
     } catch (error) {
       // If edit creation fails with 404, app doesn't exist yet
-      // That's OK - uploading the build will create the app automatically
-      if (error.code === 404 || error.message.includes('not found')) {
-        console.log(`   ℹ️  App doesn't exist yet - will be created automatically on upload`);
-        // Try to create edit anyway - sometimes it works even if app doesn't exist
-        // If it fails, the upload will handle it
+      // According to Play Store API docs, we can still create an edit for a new app
+      // The app will be created when we upload the first build
+      if (error.code === 404 || error.message.includes('not found') || error.message.includes('Package not found')) {
+        console.log(`   ℹ️  App doesn't exist yet - creating edit session for new app...`);
+        // For new apps, we need to create the edit session anyway
+        // The API should allow this - the app gets created on first upload
+        // If this still fails, it's likely a permissions issue
         try {
+          // Retry once - sometimes the API needs a moment
+          await new Promise(resolve => setTimeout(resolve, 1000));
           editId = await createEdit(packageName);
         } catch (retryError) {
-          // If still fails, we'll try upload which might create the app
-          console.log(`   ⚠️  Could not create edit session - upload may create the app`);
+          // If we still can't create an edit, the first build must be uploaded manually
+          // This is a Play Store API limitation - draft apps aren't "active" until first build is uploaded via UI
+          throw new Error(
+            `Cannot create edit session. The Play Store API requires the first build to be uploaded manually.\n\n` +
+            `Even though you created a draft app, you must upload the first build through the Play Console UI:\n\n` +
+            `1. Go to https://play.google.com/console\n` +
+            `2. Select your app: ${packageName}\n` +
+            `3. Go to "Release" → "Internal testing" → "Create new release"\n` +
+            `4. Upload your AAB file: ${filePath}\n` +
+            `5. Click "Save" (don't need to publish yet)\n\n` +
+            `After this first manual upload, your app will be "activated" and CI/CD can handle all future uploads.\n` +
+            `This is a one-time manual step required by Google Play Store.\n`
+          );
         }
       } else {
         throw error;
       }
     }
+  }
+
+  if (!editId) {
+    throw new Error('Failed to create edit session. Cannot upload build.');
   }
 
   // Upload build - this will create the app if it doesn't exist
